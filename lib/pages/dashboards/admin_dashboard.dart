@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import '../../services/auth_service.dart';
 import '../login_page.dart';
+import '../admin/manage_classes_page.dart';
+import '../admin/manage_students_page.dart';
+import 'package:flutter_school_result_system/services/database_service.dart'; // ✅ ensure this matches your file path
 
 class AdminDashboard extends StatefulWidget {
   const AdminDashboard({super.key});
@@ -10,7 +13,9 @@ class AdminDashboard extends StatefulWidget {
 }
 
 class _AdminDashboardState extends State<AdminDashboard> {
+  final DatabaseService _db = DatabaseService();
   final AuthService _authService = AuthService();
+
   String? _userName;
   String? _userRole;
   bool _isLoading = true;
@@ -19,8 +24,10 @@ class _AdminDashboardState extends State<AdminDashboard> {
   void initState() {
     super.initState();
     _loadUserData();
+    _loadInitialClasses();
   }
 
+  /// Loads logged-in admin data
   Future<void> _loadUserData() async {
     try {
       final user = await _authService.currentUser();
@@ -36,19 +43,43 @@ class _AdminDashboardState extends State<AdminDashboard> {
     }
   }
 
+  /// Optional: Automatically load some classes to test your setup
+  Future<void> _loadInitialClasses() async {
+    try {
+      // Add a test class if none exist
+      final classes = await _db.getClasses();
+      if (classes.isEmpty) {
+        await _db.addClass('Primary 1');
+        await _db.addClass('Primary 2');
+        print("✅ Sample classes added");
+      } else {
+        print("✅ Classes already exist");
+      }
+    } catch (e) {
+      print("⚠️ Failed to load initial classes: $e");
+    }
+  }
+
+  /// Handles logout
   Future<void> _logout() async {
     try {
       await _authService.logout();
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => const LoginPage()),
-      );
+      if (mounted) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const LoginPage()),
+        );
+      }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Logout failed: $e')),
       );
     }
   }
+
+  /// ================================
+  /// DASHBOARD CARD LOGIC
+  /// ================================
 
   List<Map<String, dynamic>> getDashboardCards() {
     switch (_userRole) {
@@ -114,6 +145,11 @@ class _AdminDashboardState extends State<AdminDashboard> {
         return [
           {'icon': Icons.people, 'title': 'Students', 'color': Colors.blue},
           {'icon': Icons.school, 'title': 'Teachers', 'color': Colors.orange},
+          {
+            'icon': Icons.class_,
+            'title': 'Manage Classes',
+            'color': Colors.red
+          },
           {'icon': Icons.assessment, 'title': 'Results', 'color': Colors.green},
           {'icon': Icons.settings, 'title': 'Settings', 'color': Colors.purple},
           {'icon': Icons.announcement, 'title': 'Notice', 'color': Colors.teal},
@@ -122,60 +158,28 @@ class _AdminDashboardState extends State<AdminDashboard> {
   }
 
   List<Map<String, String>> getRecentActivities() {
-    switch (_userRole) {
-      case 'teacher':
-        return [
-          {'icon': 'upload', 'title': 'Scores uploaded', 'time': 'Just now'},
-          {'icon': 'update', 'title': 'Result updated', 'time': '1 hour ago'},
-        ];
-      case 'student':
-        return [
-          {'icon': 'score', 'title': 'New results posted', 'time': 'Today'},
-          {
-            'icon': 'announcement',
-            'title': 'New notice received',
-            'time': 'Yesterday'
-          },
-        ];
-      case 'parent':
-        return [
-          {
-            'icon': 'report',
-            'title': 'Student report updated',
-            'time': 'Today'
-          },
-          {
-            'icon': 'announcement',
-            'title': 'New notice received',
-            'time': 'Yesterday'
-          },
-        ];
-      case 'admin':
-      default:
-        return [
-          {
-            'icon': 'check',
-            'title': 'You successfully logged in',
-            'time': 'Just now'
-          },
-          {
-            'icon': 'person_add',
-            'title': 'New student registered',
-            'time': '2 hours ago'
-          },
-          {
-            'icon': 'update',
-            'title': 'Result data updated',
-            'time': 'Yesterday'
-          },
-        ];
-    }
+    return [
+      {
+        'icon': 'check',
+        'title': 'You successfully logged in',
+        'time': 'Just now'
+      },
+      {
+        'icon': 'person_add',
+        'title': 'New student registered',
+        'time': '2 hours ago'
+      },
+      {'icon': 'update', 'title': 'Result data updated', 'time': 'Yesterday'},
+    ];
   }
+
+  /// ================================
+  /// UI SECTION
+  /// ================================
 
   @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
-
     int columns;
     double cardWidth;
 
@@ -197,7 +201,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
       backgroundColor: Colors.grey[100],
       appBar: AppBar(
         backgroundColor: Colors.deepOrange,
-        title: const Text('Dashboard'),
+        title: const Text('Admin Dashboard'),
         actions: [
           IconButton(
             icon: const Icon(Icons.logout),
@@ -214,7 +218,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Welcome, ${_userName ?? 'User'} 👋',
+                      'Welcome, ${_userName ?? 'Admin'} 👋',
                       style: TextStyle(
                         fontSize: screenWidth < 600 ? 24 : 28,
                         fontWeight: FontWeight.bold,
@@ -235,10 +239,11 @@ class _AdminDashboardState extends State<AdminDashboard> {
                       runSpacing: 16,
                       children: cards
                           .map((c) => _buildDashboardCard(
-                              c['icon'] as IconData,
-                              c['title'] as String,
-                              c['color'] as Color,
-                              cardWidth))
+                                c['icon'] as IconData,
+                                c['title'] as String,
+                                c['color'] as Color,
+                                cardWidth,
+                              ))
                           .toList(),
                     ),
                     const SizedBox(height: 35),
@@ -301,9 +306,21 @@ class _AdminDashboardState extends State<AdminDashboard> {
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
         onTap: () {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('$title clicked!')),
-          );
+          if (title == 'Manage Classes') {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const ManageClassesPage()),
+            );
+          } else if (title == 'Students') {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const ManageStudentsPage()),
+            );
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('$title clicked!')),
+            );
+          }
         },
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,

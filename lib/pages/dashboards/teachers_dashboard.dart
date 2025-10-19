@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../services/auth_service.dart';
 import '../login_page.dart';
+import '../teachers/upload_scores_page.dart';
 
 class TeacherDashboard extends StatefulWidget {
   const TeacherDashboard({super.key});
@@ -267,11 +268,7 @@ class _TeacherDashboardState extends State<TeacherDashboard> {
       ),
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
-        onTap: () {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('$title clicked!')),
-          );
-        },
+        onTap: () => _handleCardTap(title), // ✅ fixed here
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -308,6 +305,19 @@ class _TeacherDashboardState extends State<TeacherDashboard> {
       case 'check':
       default:
         return const Icon(Icons.check_circle, color: Colors.green);
+    }
+  }
+
+  void _handleCardTap(String title) {
+    if (title == 'Upload Scores') {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const UploadScoresPage()),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('$title feature coming soon!')),
+      );
     }
   }
 }
